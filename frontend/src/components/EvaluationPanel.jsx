@@ -8,9 +8,10 @@ export default function EvaluationPanel({
     <section className="panel">
       <div className="panel-heading">
         <div>
-          <h2>AI evaluation</h2>
+          <p className="eyebrow">MODULE 18</p>
+          <h2>Retrieval evaluation</h2>
           <p className="muted">
-            Check accuracy, retrieval, and response quality.
+            Check whether the correct policy sections are retrieved.
           </p>
         </div>
 
@@ -35,7 +36,7 @@ export default function EvaluationPanel({
           <div className="empty-icon">✓</div>
           <h3>Ready to evaluate</h3>
           <p className="muted">
-            Run the sample test suite to see how evaluation works.
+            Run the backend test suite to inspect actual retrieval results.
           </p>
         </div>
       )}
@@ -49,13 +50,13 @@ export default function EvaluationPanel({
             </div>
 
             <div className="metric-card">
-              <span className="metric-label">Direct pass rate</span>
-              <strong>{evaluation.directPassRate}%</strong>
+              <span className="metric-label">Passed</span>
+              <strong>{evaluation.passed}</strong>
             </div>
 
             <div className="metric-card">
-              <span className="metric-label">RAG pass rate</span>
-              <strong>{evaluation.ragPassRate}%</strong>
+              <span className="metric-label">Failed</span>
+              <strong>{evaluation.failed}</strong>
             </div>
 
             <div className="metric-card">
@@ -64,38 +65,34 @@ export default function EvaluationPanel({
             </div>
           </div>
 
-          <h3 className="section-title">Test case results</h3>
+          <h3 className="section-title">Individual test results</h3>
 
           <div className="table-wrapper">
             <table className="results-table">
               <thead>
                 <tr>
-                  <th>Test ID</th>
-                  <th>Test case</th>
-                  <th>Direct</th>
-                  <th>RAG</th>
-                  <th>Retrieval</th>
+                  <th>ID</th>
+                  <th>Question</th>
+                  <th>Expected section</th>
+                  <th>Retrieved sections</th>
+                  <th>Result</th>
                 </tr>
               </thead>
 
               <tbody>
-                {evaluation.results.map((result) => (
-                  <tr key={result.id}>
-                    <td>{result.id}</td>
-                    <td>{result.question}</td>
+                {evaluation.results.map((test) => (
+                  <tr key={test.id}>
+                    <td>{test.id}</td>
+                    <td>{test.question}</td>
+                    <td>{test.expectedSection ?? "None"}</td>
                     <td>
-                      <span className={result.directPassed ? "pass" : "fail"}>
-                        {result.directPassed ? "Pass" : "Fail"}
-                      </span>
+                      {test.retrievedSections.length
+                        ? test.retrievedSections.join(", ")
+                        : "None"}
                     </td>
                     <td>
-                      <span className={result.ragPassed ? "pass" : "fail"}>
-                        {result.ragPassed ? "Pass" : "Fail"}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={result.retrievalPassed ? "pass" : "fail"}>
-                        {result.retrievalPassed ? "Pass" : "Fail"}
+                      <span className={test.passed ? "pass" : "fail"}>
+                        {test.passed ? "Pass" : "Fail"}
                       </span>
                     </td>
                   </tr>
@@ -105,8 +102,9 @@ export default function EvaluationPanel({
           </div>
 
           <p className="demo-note">
-            Sample evaluation scores are predefined. They will be
-            replaced by actual test results when the backend is ready.
+            These measurements evaluate document retrieval only.
+            AI-generated answer accuracy will be evaluated after Gemini
+            is integrated.
           </p>
         </>
       )}

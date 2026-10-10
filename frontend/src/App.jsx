@@ -4,85 +4,8 @@ import ChatPanel from "./components/ChatPanel";
 import ComparisonPanel from "./components/ComparisonPanel";
 import EvaluationPanel from "./components/EvaluationPanel";
 
+import { postRequest } from "./services/api";
 import "./App.css";
-
-const SAMPLE_POLICY = [
-  {
-    title: "Casual Leave",
-    content:
-      "Employees can take 12 days of casual leave per calendar year.",
-    score: 0.75
-  },
-  {
-    title: "Working Hours",
-    content:
-      "Normal working hours are 9:00 AM to 6:00 PM, Monday through Friday.",
-    score: 0.5
-  },
-  {
-    title: "Annual Leave",
-    content:
-      "Eligible employees receive 15 days of annual leave per year.",
-    score: 0.5
-  }
-];
-
-const SAMPLE_TESTS = [
-  {
-    id: "TC01",
-    question: "Casual leave allowance",
-    directPassed: false,
-    ragPassed: true,
-    retrievalPassed: true
-  },
-  {
-    id: "TC02",
-    question: "Normal working hours",
-    directPassed: true,
-    ragPassed: true,
-    retrievalPassed: true
-  },
-  {
-    id: "TC03",
-    question: "Annual leave allowance",
-    directPassed: false,
-    ragPassed: true,
-    retrievalPassed: true
-  },
-  {
-    id: "TC04",
-    question: "Company Wi-Fi password",
-    directPassed: false,
-    ragPassed: true,
-    retrievalPassed: true
-  }
-];
-
-function getDemoAnswer(question, mode) {
-  const text = question.toLowerCase();
-
-  if (text.includes("casual leave")) {
-    return mode === "rag"
-      ? "Employees can take 12 days of casual leave per calendar year. Manager approval is required."
-      : "Casual leave policies vary by company. Please check your company's policy.";
-  }
-
-  if (text.includes("working hour")) {
-    return "Normal working hours are 9:00 AM to 6:00 PM, Monday through Friday.";
-  }
-
-  if (text.includes("annual leave")) {
-    return "Eligible employees receive 15 days of annual leave per year.";
-  }
-
-  if (text.includes("wifi") || text.includes("password")) {
-    return "I could not find this information in the provided policy.";
-  }
-
-  return mode === "rag"
-    ? "I could not find sufficient relevant information in the sample policy."
-    : "Please provide more information so I can answer your question.";
-}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("chat");
@@ -95,69 +18,123 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleAsk(question) {
+  async function handleAsk(question) {
     setLoading(true);
     setError("");
+    setResult(null);
 
     try {
-      const answer = getDemoAnswer(question, mode);
+      const endpoint = mode === "rag" ? "/rag" : "/direct";
 
-      const resultData = {
-        answer,
-        sources: mode === "rag" && !answer.startsWith(
-          "I could not find"
-        )
-          ? SAMPLE_POLICY.filter((source) => {
-              const keywords = question.toLowerCase().split(/\W+/);
-              return keywords.some(
-                (word) =>
-                  word.length > 3 &&
-                  source.content.toLowerCase().includes(word)
-              );
-            })
-          : [],
-        latencyMs: 125,
-        inputTokens: 120,
-        outputTokens: 35
-      };
+      const data = await postRequest(endpoint, { question });
 
-      setResult(resultData);
-    } catch {
-      setError("Unable to generate the sample answer.");
+      setResult({
+        answer: data.answer,
+        sources: (data.retrievedDocuments || []).map(
+          (document) => ({
+            title: document.title,
+            content: document.content,
+            score: document.score
+          })
+        ),
+        latencyMs: data.latencyMs,
+        inputTokens: data.usage?.promptTokens ?? null,
+        outputTokens: data.usage?.outputTokens ?? null,
+        contextFound: data.contextFound
+      });
+    } catch (requestError) {
+      setError(requestError.message);
     } finally {
       setLoading(false);
     }
   }
 
-  function handleCompare() {
+  async function handleCompare() {
+    setLoading(true);
     setError("");
+    setComparison(null);
 
-    setComparison({
-      direct: {
-        answer:
-          "Casual leave policies vary by company. Please check the policy.",
-        passed: false
-      },
-      rag: {
-        answer:
-          "Employees can take 12 days of casual leave per calendar year.",
-        passed: true
-      },
-      conclusion:
-        "In this illustrative example, the RAG answer includes the required company-specific fact."
-    });
+    try {
+      const question =
+        "How many casual leave days are allowed?";
+
+      const [direct, rag] = await Promise.all([
+        postRequest("/direct", { question }),
+        postRequest("/rag", { question })
+      ]);
+
+      // A simple rule-based check for this known test question.
+      const expectedTerms = [
+        "12 days",
+        "casual leave",
+        "calendar year"
+      ];
+
+      function passes(answer) {
+        const normalized = answer.toLowerCase();
+
+        return expectedTerms.every((term) =>
+          normalized.includes(term)
+        );
+      }
+
+      const directPassed = passes(direct.answer);
+      const ragPassed = passes(rag.answer);
+
+      let conclusion;
+
+      if (!directPassed && ragPassed) {
+        conclusion =
+          "RAG passed the configured reference checks while direct prompting did not.";
+      } else if (directPassed && !ragPassed) {
+        conclusion =
+          "Direct prompting passed the checks while RAG did not. Inspect the retrieved context and prompt.";
+      } else if (directPassed && ragPassed) {
+        conclusion =
+          "Both responses passed the configured checks. More test cases are needed to compare them.";
+      } else {
+        conclusion =
+          "Neither response passed all configured checks. Inspect the answers and evaluation rules.";
+      }
+
+      setComparison({
+        direct: {
+          answer: direct.answer,
+          passed: directPassed
+        },
+        rag: {
+          answer: rag.answer,
+          passed: ragPassed
+        },
+        conclusion
+      });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleRunTests() {
+  async function handleRunTests() {
+    setLoading(true);
     setError("");
+    setEvaluation(null);
 
-    setEvaluation({
-      totalTests: SAMPLE_TESTS.length,
-      directPassRate: 25,
-      ragPassRate: 100,
-      retrievalPassRate: 100,
-      results: SAMPLE_TESTS
-    });
+    try {
+      const data = await postRequest("/evaluation/tests");
+
+      setEvaluation({
+        totalTests: data.summary.totalTests,
+        passed: data.summary.passed,
+        failed: data.summary.failed,
+        retrievalPassRate: data.summary.passRate,
+        results: data.results
+      });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const tabs = [
@@ -202,6 +179,7 @@ export default function App() {
 
         <div className="sidebar-bottom">
           <div className="sidebar-label">PROJECT</div>
+          <p>Module 17 + Module 18</p>
           <span className="sidebar-caption">
             RAG · Testing · Optimization
           </span>
@@ -219,7 +197,7 @@ export default function App() {
 
           <span className="environment-badge">
             <span className="online-dot" />
-            Frontend demo
+            Backend connected by API
           </span>
         </header>
 
@@ -239,6 +217,7 @@ export default function App() {
               setMode={(nextMode) => {
                 setMode(nextMode);
                 setResult(null);
+                setError("");
               }}
               onAsk={handleAsk}
               loading={loading}
@@ -267,6 +246,7 @@ export default function App() {
 
           <footer className="footer">
             <span>Smart Knowledge Assistant</span>
+            <span>React + Express · Demo AI mode</span>
           </footer>
         </div>
       </main>
