@@ -52,21 +52,23 @@ export default function App() {
     }
   }
 
+  
   async function handleCompare() {
     setLoading(true);
     setError("");
     setComparison(null);
 
-    try {
-      const question =
-        "How many casual leave days are allowed?";
+    const question =
+      "How many casual leave days are allowed?";
 
+    try {
       const [direct, rag] = await Promise.all([
         postRequest("/direct", { question }),
         postRequest("/rag", { question })
       ]);
 
-      // A simple rule-based check for this known test question.
+      // These are simple reference checks, not a perfect
+      // measure of factual correctness.
       const expectedTerms = [
         "12 days",
         "casual leave",
@@ -81,6 +83,18 @@ export default function App() {
         );
       }
 
+      function getMetrics(result) {
+        return {
+          latencyMs: result.latencyMs ?? null,
+          inputTokens: result.usage?.promptTokens ?? null,
+          outputTokens: result.usage?.outputTokens ?? null,
+          totalTokens: result.usage?.totalTokens ?? null
+        };
+      }
+
+      const directMetrics = getMetrics(direct);
+      const ragMetrics = getMetrics(rag);
+
       const directPassed = passes(direct.answer);
       const ragPassed = passes(rag.answer);
 
@@ -88,27 +102,44 @@ export default function App() {
 
       if (!directPassed && ragPassed) {
         conclusion =
-          "RAG passed the configured reference checks while direct prompting did not.";
+          "RAG passed all configured reference checks while Direct did not. Inspect both answers before concluding that RAG is more accurate.";
       } else if (directPassed && !ragPassed) {
         conclusion =
-          "Direct prompting passed the checks while RAG did not. Inspect the retrieved context and prompt.";
+          "Direct passed the configured checks while RAG did not. Inspect the retrieved context and generated answer.";
       } else if (directPassed && ragPassed) {
         conclusion =
-          "Both responses passed the configured checks. More test cases are needed to compare them.";
+          "Both answers passed the configured checks. Test more questions to compare reliability.";
       } else {
         conclusion =
-          "Neither response passed all configured checks. Inspect the answers and evaluation rules.";
+          "Neither answer passed all configured checks. Inspect the answers and refine the prompts or evaluation rules.";
       }
 
+      const latencyDifferenceMs =
+        directMetrics.latencyMs !== null &&
+        ragMetrics.latencyMs !== null
+          ? ragMetrics.latencyMs - directMetrics.latencyMs
+          : null;
+
+      const tokenDifference =
+        directMetrics.totalTokens !== null &&
+        ragMetrics.totalTokens !== null
+          ? ragMetrics.totalTokens - directMetrics.totalTokens
+          : null;
+
       setComparison({
+        question,
         direct: {
           answer: direct.answer,
-          passed: directPassed
+          passed: directPassed,
+          ...directMetrics
         },
         rag: {
           answer: rag.answer,
-          passed: ragPassed
+          passed: ragPassed,
+          ...ragMetrics
         },
+        latencyDifferenceMs,
+        tokenDifference,
         conclusion
       });
     } catch (requestError) {

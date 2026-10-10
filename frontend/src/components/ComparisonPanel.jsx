@@ -4,79 +4,141 @@ export default function ComparisonPanel({
   loading,
   error
 }) {
+  function formatMetric(value, suffix = "") {
+    return value === null || value === undefined
+      ? "Not available"
+      : `${value}${suffix}`;
+  }
+
   return (
-    <section className="panel">
-      <div className="panel-heading">
+    <section className="comparison-panel">
+      <div className="comparison-heading">
         <div>
-          <h2>Direct vs. RAG</h2>
-          <p className="muted">
-            Compare answers for the same question.
+          <h3>Direct vs RAG</h3>
+          <p>
+            Compare answer quality, response time, and token usage.
           </p>
         </div>
-      </div>
 
-      <div className="info-banner">
-        <strong>Experiment</strong>
-        <p>
-          Direct prompting uses the question alone. RAG adds
-          relevant external knowledge to the prompt.
-        </p>
+        <button
+          type="button"
+          onClick={onCompare}
+          disabled={loading}
+        >
+          {loading ? "Comparing..." : "Run comparison"}
+        </button>
       </div>
-
-      <button
-        className="primary-button"
-        type="button"
-        onClick={onCompare}
-        disabled={loading}
-      >
-        {loading ? "Comparing..." : "Run comparison"}
-      </button>
 
       {error && (
-        <div className="error-message" role="alert">
+        <div className="evaluation-error" role="alert">
           {error}
         </div>
       )}
 
       {comparison && (
         <>
+          <div className="comparison-question">
+            <strong>Test question</strong>
+            <p>{comparison.question}</p>
+          </div>
+
           <div className="comparison-grid">
-            <article className="comparison-card">
-              <span className="status-badge">Without context</span>
-              <h3>Direct prompting</h3>
-              <p>{comparison.direct.answer}</p>
+            <AnswerCard
+              title="Direct prompting"
+              result={comparison.direct}
+              formatMetric={formatMetric}
+            />
 
-              <div className="result-metric">
-                <span>Evaluation</span>
-                <strong>
-                  {comparison.direct.passed ? "Passed" : "Failed"}
-                </strong>
-              </div>
-            </article>
-
-            <article className="comparison-card">
-              <span className="status-badge">With context</span>
-              <h3>RAG prompting</h3>
-              <p>{comparison.rag.answer}</p>
-
-              <div className="result-metric">
-                <span>Evaluation</span>
-                <strong>
-                  {comparison.rag.passed ? "Passed" : "Failed"}
-                </strong>
-              </div>
-            </article>
+            <AnswerCard
+              title="RAG prompting"
+              result={comparison.rag}
+              formatMetric={formatMetric}
+            />
           </div>
 
-          <div className="info-banner">
-            <strong>Comparison result</strong>
+          <section className="comparison-summary">
+            <h4>Performance comparison</h4>
+
+            <div className="evaluation-metrics">
+              <Metric
+                label="Direct latency"
+                value={formatMetric(
+                  comparison.direct.latencyMs,
+                  " ms"
+                )}
+              />
+
+              <Metric
+                label="RAG latency"
+                value={formatMetric(
+                  comparison.rag.latencyMs,
+                  " ms"
+                )}
+              />
+
+              <Metric
+                label="Latency difference (RAG − Direct)"
+                value={formatMetric(
+                  comparison.latencyDifferenceMs,
+                  " ms"
+                )}
+              />
+
+              <Metric
+                label="Token difference (RAG − Direct)"
+                value={formatMetric(
+                  comparison.tokenDifference
+                )}
+              />
+            </div>
+
             <p>{comparison.conclusion}</p>
-            <p className="muted">
-              Demo values are illustrative, not measured AI performance.
-            </p>
-          </div>
+          </section>
         </>
       )}
     </section>
+  );
+}
+
+function AnswerCard({ title, result, formatMetric }) {
+  return (
+    <article className="comparison-answer">
+      <h4>{title}</h4>
+
+      <p className="comparison-answer-text">
+        {result.answer}
+      </p>
+
+      <p>
+        Reference checks:{" "}
+        <strong>
+          {result.passed ? "PASS" : "FAIL"}
+        </strong>
+      </p>
+
+      <div className="comparison-small-metrics">
+        <span>
+          Latency: {formatMetric(result.latencyMs, " ms")}
+        </span>
+        <span>
+          Input tokens: {formatMetric(result.inputTokens)}
+        </span>
+        <span>
+          Output tokens: {formatMetric(result.outputTokens)}
+        </span>
+        <span>
+          Total tokens: {formatMetric(result.totalTokens)}
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="evaluation-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
