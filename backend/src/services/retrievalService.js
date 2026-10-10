@@ -68,7 +68,8 @@ export async function retrieveDocuments(question, topK = 3) {
   });
 
   return ranked
-    .filter((section) => section.score >= 0.25)
+    // Require at least half of the unique query words to match.
+    .filter((section) => section.score >= 0.5)
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.min(Math.max(topK, 1), 5));
 }

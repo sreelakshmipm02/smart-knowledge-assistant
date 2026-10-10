@@ -1,12 +1,20 @@
+
 import express from "express";
+
+import { retrieveDocuments } from "../services/retrievalService.js";
 import {
-  retrieveDocuments
-} from "../services/retrievalService.js";
+  buildDirectPrompt,
+  buildRagPrompt
+} from "../services/promptService.js";
+import { generateAnswer } from "../services/aiService.js";
 
 const router = express.Router();
 
+const NOT_FOUND_ANSWER =
+  "I could not find this information in the provided policy.";
+
 function validateQuestion(req, res) {
-  const question = req.body?.question;
+  const { question } = req.body ?? {};
 
   if (
     typeof question !== "string" ||
@@ -21,7 +29,7 @@ function validateQuestion(req, res) {
 
   if (question.length > 500) {
     res.status(400).json({
-      error: "Question must not exceed 500 characters."
+      error: "Question must be 500 characters or fewer."
     });
 
     return null;
@@ -30,63 +38,26 @@ function validateQuestion(req, res) {
   return question.trim();
 }
 
-function createDemoAnswer(question, mode, documents) {
-  const text = question.toLowerCase();
+router.post("/direct", async (req, res, next) => {
+  const startedAt = Date.now();
+  const question = validateQuestion(req, res);
 
-  if (mode === "rag") {
-    if (documents.length === 0) {
-      return "I could not find this information in the provided policy.";
-    }
-
-    const content = documents
-      .map((document) => document.content)
-      .join("\n");
-
-    if (text.includes("casual leave")) {
-      return content.includes("12 days")
-        ? "Employees can take 12 days of casual leave per calendar year. Manager approval is required."
-        : "I could not find this information in the provided policy.";
-    }
-
-    if (text.includes("annual leave")) {
-      return content.includes("15 days")
-        ? "Eligible employees receive 15 days of annual leave per year."
-        : "I could not find this information in the provided policy.";
-    }
-
-    if (text.includes("working hours")) {
-      return content.includes("9:00 AM to 6:00 PM")
-        ? "Normal working hours are 9:00 AM to 6:00 PM, Monday through Friday."
-        : "I could not find this information in the provided policy.";
-    }
-
-    return "Relevant policy sections were retrieved. AI generation will be connected in the next stage.";
+  if (question === null) {
+    return;
   }
 
-  return "This is a demo response without AI generation or access to external policy context.";
-}
-
-router.post("/direct", async (req, res, next) => {
   try {
-    const question = validateQuestion(req, res);
-
-    if (!question) return;
-
-    const startTime = Date.now();
-
-    const answer = createDemoAnswer(question, "direct", []);
+    const prompt = buildDirectPrompt(question);
+    const result = await generateAnswer(prompt);
 
     res.json({
       mode: "direct",
       question,
-      answer,
-      latencyMs: Date.now() - startTime,
-      usage: {
-        promptTokens: null,
-        outputTokens: null,
-        totalTokens: null
-      },
-      demo: true
+      answer: result.answer,
+      model: result.model,
+      latencyMs: Date.now() - startedAt,
+      usage: result.usage,
+      demo: false
     });
   } catch (error) {
     next(error);
@@ -94,39 +65,61 @@ router.post("/direct", async (req, res, next) => {
 });
 
 router.post("/rag", async (req, res, next) => {
+  const startedAt = Date.now();
+  const question = validateQuestion(req, res);
+
+  if (question === null) {
+    return;
+  }
+
   try {
-    const question = validateQuestion(req, res);
+    const documents = await retrieveDocuments(question);
 
-    if (!question) return;
+    // Do not ask the model to guess when retrieval finds nothing.
+    if (documents.length === 0) {
+      return res.json({
+        mode: "rag",
+        question,
+        answer: NOT_FOUND_ANSWER,
+        model: null,
+        retrievedDocuments: [],
+        contextFound: false,
+        contextChars: 0,
+        latencyMs: Date.now() - startedAt,
+        usage: {
+          promptTokens: null,
+          outputTokens: null,
+          totalTokens: null
+        },
+        demo: false
+      });
+    }
 
-    const startTime = Date.now();
+    const {
+      prompt,
+      usedDocuments,
+      contextChars
+    } = buildRagPrompt(question, documents);
 
-    const documents = await retrieveDocuments(question, 3);
-
-    const answer = createDemoAnswer(
-      question,
-      "rag",
-      documents
-    );
+    const result = await generateAnswer(prompt);
 
     res.json({
       mode: "rag",
       question,
-      answer,
-      retrievedDocuments: documents.map((document) => ({
+      answer: result.answer,
+      model: result.model,
+      retrievedDocuments: usedDocuments.map((document) => ({
         title: document.title,
         content: document.content,
         score: document.score,
-        matchedWords: document.matchedWords
+        matchedWords: document.matchedWords,
+        truncated: document.truncated
       })),
-      contextFound: documents.length > 0,
-      latencyMs: Date.now() - startTime,
-      usage: {
-        promptTokens: null,
-        outputTokens: null,
-        totalTokens: null
-      },
-      demo: true
+      contextFound: true,
+      contextChars,
+      latencyMs: Date.now() - startedAt,
+      usage: result.usage,
+      demo: false
     });
   } catch (error) {
     next(error);
