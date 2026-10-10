@@ -8,12 +8,11 @@ export function buildDirectPrompt(question) {
   return `
 You are a helpful AI assistant.
 
-Answer the user's question clearly and accurately.
-Do not claim that you have accessed any company documents.
-If the question asks about a specific company's policy and
-you do not have that policy, say that you do not have enough
-information to confirm the company's rule.
-Do not invent company-specific facts.
+Answer the user's question in 2 to 4 complete sentences.
+Do not invent company-specific policies or numbers.
+If the question asks about a company's policy and no policy
+document is provided, clearly state that you cannot confirm
+the company's specific rule.
 
 User question:
 ${question}
@@ -21,7 +20,6 @@ ${question}
 Answer:
 `.trim();
 }
-
 export function buildRagPrompt(question, documents) {
   let remainingChars = MAX_CONTEXT_CHARS;
   const usedDocuments = [];

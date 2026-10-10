@@ -18,6 +18,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [retrievalEvaluation, setRetrievalEvaluation] = useState(null);
+  const [consistency, setConsistency] = useState(null);
+
   async function handleAsk(question) {
     setLoading(true);
     setError("");
@@ -115,19 +118,20 @@ export default function App() {
     }
   }
 
-  async function handleRunTests() {
+  
+  async function handleRunRetrievalTests() {
     setLoading(true);
     setError("");
-    setEvaluation(null);
+    setRetrievalEvaluation(null);
 
     try {
       const data = await postRequest("/evaluation/tests");
 
-      setEvaluation({
+      setRetrievalEvaluation({
         totalTests: data.summary.totalTests,
         passed: data.summary.passed,
         failed: data.summary.failed,
-        retrievalPassRate: data.summary.passRate,
+        passRate: data.summary.passRate,
         results: data.results
       });
     } catch (requestError) {
@@ -136,6 +140,49 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  async function handleRunEvaluation() {
+    setLoading(true);
+    setError("");
+    setEvaluation(null);
+
+    try {
+      const data = await postRequest("/evaluation/run");
+
+      setEvaluation({
+        totalTests: data.summary.totalTests,
+        passed: data.summary.passed,
+        failed: data.summary.failed,
+        passRate: data.summary.passRate,
+        averageLatencyMs: data.summary.averageLatencyMs,
+        results: data.results
+      });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRunConsistency(question, repetitions) {
+    setLoading(true);
+    setError("");
+    setConsistency(null);
+
+    try {
+      const data = await postRequest("/evaluation/consistency", {
+        question,
+        repetitions
+      });
+
+      setConsistency(data);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   const tabs = [
     { id: "chat", label: "Ask questions", icon: "✳" },
@@ -235,14 +282,20 @@ export default function App() {
             />
           )}
 
+          
           {activeTab === "evaluation" && (
             <EvaluationPanel
               evaluation={evaluation}
-              onRunTests={handleRunTests}
+              retrievalEvaluation={retrievalEvaluation}
+              consistency={consistency}
+              onRunEvaluation={handleRunEvaluation}
+              onRunRetrievalTests={handleRunRetrievalTests}
+              onRunConsistency={handleRunConsistency}
               loading={loading}
               error={error}
             />
           )}
+
 
           <footer className="footer">
             <span>Smart Knowledge Assistant</span>

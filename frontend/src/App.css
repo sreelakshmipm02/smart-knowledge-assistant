@@ -690,3 +690,247 @@ button:disabled {
     font-size: 10px;
   }
 }
+
+
+/* AI evaluation dashboard */
+
+.evaluation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.evaluation-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.evaluation-heading h3,
+.evaluation-section h4 {
+  margin: 0 0 8px;
+}
+
+.evaluation-heading p,
+.evaluation-section > p {
+  color: #687386;
+  line-height: 1.6;
+}
+
+.evaluation-status {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #edf2ff;
+  color: #344ebc;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.evaluation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.evaluation-actions button,
+.consistency-form button {
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 16px;
+  background: #344ebc;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.evaluation-actions button:disabled,
+.consistency-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.evaluation-error {
+  padding: 12px;
+  border: 1px solid #f0b8b8;
+  border-radius: 8px;
+  background: #fff1f1;
+  color: #9e2222;
+  overflow-wrap: anywhere;
+}
+
+.evaluation-loading {
+  color: #687386;
+}
+
+.evaluation-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #e0e5ed;
+  border-radius: 12px;
+  background: white;
+  min-width: 0;
+}
+
+.evaluation-metrics {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(125px, 1fr)
+  );
+  gap: 12px;
+}
+
+.evaluation-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #e5e9f0;
+  border-radius: 9px;
+  min-width: 0;
+}
+
+.evaluation-metric span {
+  color: #687386;
+  font-size: 12px;
+}
+
+.evaluation-metric strong {
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.evaluation-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.evaluation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.evaluation-table th,
+.evaluation-table td {
+  padding: 11px;
+  border-bottom: 1px solid #e5e9f0;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.evaluation-table th {
+  background: #f7f8fb;
+  color: #4b5568;
+}
+
+.evaluation-pass,
+.evaluation-fail {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.evaluation-pass {
+  background: #e5f8ed;
+  color: #176b3a;
+}
+
+.evaluation-fail {
+  background: #fff0f0;
+  color: #a32222;
+}
+
+.evaluation-detail {
+  padding: 12px;
+  border: 1px solid #e5e9f0;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.evaluation-detail summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.evaluation-detail p,
+.evaluation-detail li {
+  line-height: 1.6;
+}
+
+.consistency-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.consistency-form label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.consistency-form textarea,
+.consistency-form select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccd3df;
+  border-radius: 8px;
+  background: white;
+  color: #202938;
+  font: inherit;
+}
+
+.consistency-form textarea {
+  resize: vertical;
+}
+
+.consistency-form button {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.consistency-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consistency-answer {
+  padding: 14px;
+  border: 1px solid #e5e9f0;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+.consistency-answer p {
+  line-height: 1.6;
+}
+
+.consistency-answer small {
+  color: #687386;
+}
+
+@media (max-width: 600px) {
+  .evaluation-heading {
+    flex-direction: column;
+  }
+
+  .evaluation-actions {
+    flex-direction: column;
+  }
+
+  .evaluation-actions button {
+    width: 100%;
+  }
+
+  .evaluation-section {
+    padding: 12px;
+  }
+}

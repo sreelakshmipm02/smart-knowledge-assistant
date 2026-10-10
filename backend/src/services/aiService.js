@@ -28,8 +28,11 @@ export async function generateAnswer(prompt) {
     model,
     contents: prompt,
     config: {
-      temperature: 0.2,
-      maxOutputTokens
+    temperature: 0.2,
+    maxOutputTokens: Math.max(
+        150,
+        Number(process.env.MAX_OUTPUT_TOKENS || 400)
+    )
     }
   });
 
